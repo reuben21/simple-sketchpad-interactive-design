@@ -1,19 +1,20 @@
 import './App.css'
 import {useEffect, useLayoutEffect, useRef, useState} from "react";
-import { SketchPicker } from 'react-color'
+import {SketchPicker} from 'react-color'
 import {Tooltip} from 'antd';
 import "./App.css";
 import rough from 'roughjs/bundled/rough.esm';
 import {getStroke} from "perfect-freehand";
-import { ReactComponent as LineIcon } from "./assets/line.svg";
-import { ReactComponent as RectangleIcon} from "./assets/rectangle.svg";
-import { ReactComponent as CircleIcon} from "./assets/circle.svg";
-import { ReactComponent as SelectionIcon} from "./assets/selection.svg";
-import { ReactComponent as EllipseIcon} from "./assets/ellipse.svg";
-import { ReactComponent as SquareIcon} from "./assets/square.svg";
-import { ReactComponent as UndoIcon} from "./assets/undo.svg";
-import { ReactComponent as RedoIcon }from "./assets/redo.svg";
-import { ReactComponent as PencilIcon } from './assets/pencil.svg';
+import {ReactComponent as LineIcon} from "./assets/line.svg";
+import {ReactComponent as RectangleIcon} from "./assets/rectangle.svg";
+import {ReactComponent as CircleIcon} from "./assets/circle.svg";
+import {ReactComponent as SelectionIcon} from "./assets/selection.svg";
+import {ReactComponent as EllipseIcon} from "./assets/ellipse.svg";
+import {ReactComponent as SquareIcon} from "./assets/square.svg";
+import {ReactComponent as UndoIcon} from "./assets/undo.svg";
+import {ReactComponent as RedoIcon} from "./assets/redo.svg";
+import {ReactComponent as PencilIcon} from './assets/pencil.svg';
+import {ReactComponent as PentagonIcon} from './assets/pentagon.svg';
 
 const generator = rough.generator();
 
@@ -34,37 +35,37 @@ const adjustElementCoordinates = element => {
     }
 };
 
-function createElement(id, x1, y1, x2, y2, elementType,color) {
+function createElement(id, x1, y1, x2, y2, elementType, color) {
     let roughElement;
     console.log("Element Type Created", elementType)
 
     if (elementType === "line") {
-        roughElement = generator.line(x1, y1, x2, y2,{stroke:color});
-        return {id, x1, y1, x2, y2, elementType, roughElement,color};
+        roughElement = generator.line(x1, y1, x2, y2, {stroke: color});
+        return {id, x1, y1, x2, y2, elementType, roughElement, color};
     } else if (elementType === "pencil") {
-        return {id, elementType, points: [{x: x1, y: y1}],color};
+        return {id, elementType, points: [{x: x1, y: y1}], color};
     } else if (elementType === "rectangle") {
-        roughElement = generator.rectangle(x1, y1, x2 - x1, y2 - y1,{stroke:color});
-        return {id, x1, y1, x2, y2, elementType, roughElement,color};
+        roughElement = generator.rectangle(x1, y1, x2 - x1, y2 - y1, {stroke: color});
+        return {id, x1, y1, x2, y2, elementType, roughElement, color};
     } else if (elementType === "square") {
         const sideLength = Math.min(Math.abs(x2 - x1), Math.abs(y2 - y1));
         const centerX = (x1 + x2) / 2;
         const centerY = (y1 + y2) / 2;
-        roughElement = generator.rectangle(centerX - sideLength / 2, centerY - sideLength / 2, sideLength, sideLength,{stroke:color});
-        return {id, x1, y1, x2, y2, elementType, roughElement,color};
+        roughElement = generator.rectangle(centerX - sideLength / 2, centerY - sideLength / 2, sideLength, sideLength, {stroke: color});
+        return {id, x1, y1, x2, y2, elementType, roughElement, color};
     } else if (elementType === "circle") {
         const radius = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) / 2;
         const centerX = (x1 + x2) / 2;
         const centerY = (y1 + y2) / 2;
-        roughElement = generator.circle(centerX, centerY, radius,{stroke:color});
-        return {id, x1, y1, x2, y2, elementType, roughElement,color};
+        roughElement = generator.circle(centerX, centerY, radius, {stroke: color});
+        return {id, x1, y1, x2, y2, elementType, roughElement, color};
     } else if (elementType === "ellipse") {
         const rx = Math.abs(x2 - x1) / 2;
         const ry = Math.abs(y2 - y1) / 2;
         const centerX = (x1 + x2) / 2;
         const centerY = (y1 + y2) / 2;
         roughElement = generator.ellipse(centerX, centerY, rx, ry);
-        return {id, x1, y1, x2, y2, elementType, roughElement,color};
+        return {id, x1, y1, x2, y2, elementType, roughElement, color};
     } else if (elementType === "pentagon") {
         const sideLength = Math.min(Math.abs(x2 - x1), Math.abs(y2 - y1));
         const centerX = (x1 + x2) / 2;
@@ -79,11 +80,11 @@ function createElement(id, x1, y1, x2, y2, elementType,color) {
             pentagonVertices.push([vertexX, vertexY]);
         }
 
-        roughElement = generator.polygon(pentagonVertices,{stroke:color});
+        roughElement = generator.polygon(pentagonVertices, {stroke: color});
     }
 
     return {
-        id, x1, y1, x2, y2, elementType, roughElement,color
+        id, x1, y1, x2, y2, elementType, roughElement, color
     };
 }
 
@@ -99,6 +100,28 @@ const onLine = (x1, y1, x2, y2, x, y, maxDistance = 1) => {
     const offset = distance(a, b) - (distance(a, c) + distance(b, c));
     return Math.abs(offset) < maxDistance ? "inside" : null;
 };
+
+function isPointInsidePolygon(point, polygon) {
+    const [x, y] = point;
+    let inside = false;
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i][0];
+        const yi = polygon[i][1];
+        const xj = polygon[j][0];
+        const yj = polygon[j][1];
+
+        const intersect =
+            yi > y !== yj > y &&
+            x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+
+        if (intersect) {
+            inside = !inside;
+        }
+    }
+
+    return inside;
+}
 
 const positionWithinElement = (x, y, element) => {
     const {elementType, x1, x2, y1, y2} = element;
@@ -149,8 +172,25 @@ const positionWithinElement = (x, y, element) => {
                 return "inside";
             }
             break;
-        // case "pentagon":
-        //     break;
+        case "pentagon":
+            const sideLength = Math.min(Math.abs(element.x2 - element.x1), Math.abs(element.y2 - element.y1));
+            const centerXPentagon = (element.x1 + element.x2) / 2;
+            const centerYPentagon = (element.y1 + element.y2) / 2;
+            const angleStep = (2 * Math.PI) / 5;
+            const pentagonVertices = [];
+
+            for (let i = 0; i < 5; i++) {
+                const angle = i * angleStep - Math.PI / 2;
+                const vertexX = centerXPentagon + sideLength * Math.cos(angle);
+                const vertexY = centerYPentagon + sideLength * Math.sin(angle);
+                pentagonVertices.push([vertexX, vertexY]);
+            }
+
+            // Check if (x, y) is inside the pentagon using a point-in-polygon algorithm
+            if (isPointInsidePolygon([x, y], pentagonVertices)) {
+                return "inside";
+            }
+            break;
 
 
         case "pencil":
@@ -344,7 +384,7 @@ function App() {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, []);
-    const updateElement = (id, x1, y1, x2, y2, elementType,color) => {
+    const updateElement = (id, x1, y1, x2, y2, elementType, color) => {
         const elementsCopy = [...elements];
         switch (elementType) {
             case "pencil":
@@ -356,7 +396,7 @@ function App() {
             case "circle":
             case "ellipse":
             case "pentagon":
-                elementsCopy[id] = createElement(id, x1, y1, x2, y2, elementType,selectedColor);
+                elementsCopy[id] = createElement(id, x1, y1, x2, y2, elementType, selectedColor);
                 break;
 
             default:
@@ -380,6 +420,49 @@ function App() {
                     const offsetY = element.points.map(point => clientY - point.y);
                     setSelectedElement({...element, offsetX, offsetY});
 
+                } else if (element.elementType === "pentagon") {
+                    // Extract the pentagon points from the roughElement data
+                    const pentagonPoints = element.roughElement.sets[0].ops
+                        .filter(op => op.op === "bcurveTo")
+                        .map(op => op.data);
+
+                    // Initialize variables to store the minimum and maximum coordinates
+                    let minX = Infinity;
+                    let minY = Infinity;
+                    let maxX = -Infinity;
+                    let maxY = -Infinity;
+
+                    // Loop through the pentagon points to find the minimum and maximum coordinates
+                    pentagonPoints.forEach(point => {
+                        const [x, y] = point;
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    });
+
+                    const offsetX = clientX - minX;
+                    const offsetY = clientY - minY;
+
+                    // Set the bounding box coordinates and dimensions
+                    setBoundingBox({
+                        x: minX,
+                        y: minY,
+                        width: maxX - minX,
+                        height: maxY - minY,
+                    });
+
+                    setSelectedElement({...element, offsetX, offsetY});
+                } else if (element.elementType === "circle") {
+                    const offsetX = clientX - element.x1;
+                    const offsetY = clientY - element.y1;
+                    setBoundingBox({
+                        x: element.x1,
+                        y: element.y1,
+                        width: element.x2 - element.x1,
+                        height: element.y2 - element.y1,
+                    });
+                    setSelectedElement({...element, offsetX, offsetY});
                 } else {
                     const offsetX = clientX - element.x1;
                     const offsetY = clientY - element.y1;
@@ -423,6 +506,7 @@ function App() {
 
     const handleMouseUp = (event) => {
         if (!action) return;
+        setBoundingBox(null);
         setShowColorPicker(false)
         if (action === "choose_object") {
             setCopiedElement(null);
@@ -431,15 +515,15 @@ function App() {
 
 
             const index = selectedElement.id;
-            const {id, type,color} = elements[index];
+            const {id, type, color} = elements[index];
             console.log(color)
             if ((action === "drawing" || action === "resizing") && adjustmentRequired(type)) {
                 const {x1, y1, x2, y2} = adjustElementCoordinates(elements[index]);
-                updateElement(id, x1, y1, x2, y2, type,color);
+                updateElement(id, x1, y1, x2, y2, type, color);
             }
         }
         setAction("none");
-        setSelectedElement(null)
+        setSelectedElement(null);
         // const {clientX, clientY} = event;
         // console.log(clientX, clientY);
 
@@ -465,10 +549,10 @@ function App() {
         }
 
         if (action === "drawing") {
-
+            setBoundingBox(null);
             const index = elements.length - 1;
-            const {x1, y1,color} = elements[index];
-            updateElement(index, x1, y1, clientX, clientY, tool,color);
+            const {x1, y1, color} = elements[index];
+            updateElement(index, x1, y1, clientX, clientY, tool, color);
 
         } else if (action === "moving") {
             if (selectedElement === null) return;
@@ -483,14 +567,42 @@ function App() {
                     points: newPoints,
                 };
                 setElements(elementsCopy, true);
-            } else {
-
-                const {id, x1, y1, x2, y2, elementType, offsetX, offsetY,color} = selectedElement;
+            } else if (selectedElement.elementType === "pentagon") {
+                const {id, x1, y1, x2, y2, elementType, offsetX, offsetY, color} = selectedElement;
                 const width = x2 - x1;
                 const height = y2 - y1;
                 const newX1 = clientX - offsetX;
                 const newY1 = clientY - offsetY;
-                updateElement(id, newX1, newY1, newX1 + width, newY1 + height, elementType,color);
+                updateElement(id, newX1, newY1, newX1 + width, newY1 + height, elementType, color);
+                setBoundingBox({
+                    x: newX1,
+                    y: newY1,
+                    width: x2 - x1,
+                    height: y2 - y1
+                });
+                setCopiedElement(selectedElement);
+            } else if (selectedElement.elementType === "circle") {
+                const {id, x1, y1, x2, y2, elementType, offsetX, offsetY, color} = selectedElement;
+                const width = x2 - x1;
+                const height = y2 - y1;
+                const newX1 = clientX - offsetX;
+                const newY1 = clientY - offsetY;
+                updateElement(id, newX1, newY1, newX1 + width, newY1 + height, elementType, color);
+                setBoundingBox({
+                    x: newX1,
+                    y: newY1,
+                    width: x2 - x1,
+                    height: y2 - y1
+                });
+                setCopiedElement(selectedElement);
+            }else {
+
+                const {id, x1, y1, x2, y2, elementType, offsetX, offsetY, color} = selectedElement;
+                const width = x2 - x1;
+                const height = y2 - y1;
+                const newX1 = clientX - offsetX;
+                const newY1 = clientY - offsetY;
+                updateElement(id, newX1, newY1, newX1 + width, newY1 + height, elementType, color);
                 setBoundingBox({
                     x: newX1,
                     y: newY1,
@@ -566,12 +678,12 @@ function App() {
                 const offsetY = clientY; // Use the current clientY position as offsetY
 
                 // Calculate the dimensions of the copied element
-                const {x1, y1, x2, y2, elementType,color} = copiedElement;
+                const {x1, y1, x2, y2, elementType, color} = copiedElement;
                 const width = x2 - x1;
                 const height = y2 - y1;
 
                 // Create the pasted element based on the copied element's properties
-                const pastedElement = createElement(newId, offsetX, offsetY, offsetX + width, offsetY + height, elementType,color);
+                const pastedElement = createElement(newId, offsetX, offsetY, offsetX + width, offsetY + height, elementType, color);
 
                 // Add the pasted element to the elements array
                 setElements([...elements, pastedElement]);
@@ -583,8 +695,8 @@ function App() {
 
     }
 
-    const ToolButton = ({ name, icon, onClick, tooltip }) => (
-        <div style={{ position: "relative" }}>
+    const ToolButton = ({name, icon, onClick, tooltip}) => (
+        <div style={{position: "relative"}}>
             <Tooltip title={tooltip}>
                 <button
                     style={{
@@ -604,102 +716,104 @@ function App() {
         </div>
     );
 
-    console.log("selectedColor",selectedColor.hex)
+    console.log("selectedColor", selectedColor.hex)
 
     return (
-        <div >
-            <div  style={{ position: "relative" }}>
-                <div style={{
-                    position: "fixed",
-                    top: 0,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    zIndex: 2,
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    width: "100%",
-                    height: 60,
-                    backgroundColor: "white",
-                    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
-                }} >
+        <div>
+            <div style={{position: "relative"}}>
+                <div className="toolbar">
                     <ToolButton
                         name="selection"
-                        icon={<SelectionIcon width={25} height={25} strokeWidth={2} />}
+                        icon={<SelectionIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("selection")}
                         tooltip="Select Tool"
                     />
                     <ToolButton
                         name="pencil"
-                        icon={<PencilIcon width={25} height={25} strokeWidth={2} />}
+                        icon={<PencilIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("pencil")}
                         tooltip="Pencil Tool"
                     />
                     <ToolButton
                         name="line"
-                        icon={<LineIcon width={25} height={25} strokeWidth={2} />}
+                        icon={<LineIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("line")}
                         tooltip="Line Tool"
                     />
                     <ToolButton
                         name="rectangle"
-                        icon={<RectangleIcon width={25} height={25} strokeWidth={2} />}
+                        icon={<RectangleIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("rectangle")}
                         tooltip="Rectangle Tool"
                     />
                     <ToolButton
                         name="circle"
-                        icon={<CircleIcon width={25} height={25} strokeWidth={2} />}
+                        icon={<CircleIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("circle")}
                         tooltip="Circle Tool"
                     />
                     <ToolButton
                         name="ellipse"
-                        icon={<EllipseIcon width={25} height={25} strokeWidth={2} />}
+                        icon={<EllipseIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("ellipse")}
                         tooltip="Ellipse Tool"
                     />
                     <ToolButton
                         name="square"
-                        icon={<SquareIcon width={25} height={25} strokeWidth={2} />}
+                        icon={<SquareIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("square")}
                         tooltip="Square Tool"
                     />
                     <ToolButton
+                        name="pentagon"
+                        icon={<PentagonIcon width={25} height={25} strokeWidth={2}/>}
+                        onClick={() => setTool("pentagon")}
+                        tooltip="Pentagon Tool"
+                    />
+                    <ToolButton
                         name="undo"
-                        icon={<UndoIcon width={25} height={25} />}
-                        onClick={undo}
+                        icon={<UndoIcon width={25} height={25}/>}
+                        onClick={() => {
+                            setBoundingBox(null);
+                            undo();
+
+                        }}
                         tooltip="Undo"
                     />
                     <ToolButton
                         name="redo"
-                        icon={<RedoIcon width={25} height={25} />}
-                        onClick={redo}
+                        icon={<RedoIcon width={25} height={25}/>}
+                        onClick={() => {
+                            setBoundingBox(null);
+                            redo();
+                        }}
                         tooltip="Redo"
                     />
-                    <button
-                        style={{
-                            width: 45,
-                            height: 45,
-                            border: "none",
-                            borderRadius: 10,
-                            margin: 10,
-                            backgroundColor: selectedColor,
-                            boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
-                        }}
+                    <Tooltip title={"Select Color"}>
+                        <button
+                            style={{
+                                width: 45,
+                                height: 45,
+                                border: "none",
+                                borderRadius: 10,
+                                margin: 10,
+                                backgroundColor: selectedColor,
+                                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+                            }}
 
-                        onClick={()=>setShowColorPicker(true)}
-                    >
+                            onClick={() => setShowColorPicker(true)}
+                        >
 
-                    </button>
+                        </button>
+                    </Tooltip>
 
                     {
                         showColorPicker && <div style={{
-                            position:"relative",
+                            position: "relative",
                             marginTop: 360,
                             marginLeft: -138,
-                        }}  ><SketchPicker color={selectedColor} onChange={(color)=>setSelectedColor(color.hex)} />
-                            </div>
+                        }}><SketchPicker color={selectedColor} onChange={(color) => setSelectedColor(color.hex)}/>
+                        </div>
                     }
                 </div>
 
