@@ -215,7 +215,6 @@ const positionWithinElement = (x, y, element) => {
 };
 const getElementAtPosition = (x, y, elements) => {
 
-
     return elements
         .map(element => ({...element, position: positionWithinElement(x, y, element)}))
         .find(element => element.position !== null);
@@ -253,12 +252,39 @@ const cursorForPosition = position => {
     }
 };
 
+const usePressedKeys = () => {
+    const [pressedKeys, setPressedKeys] = useState(new Set());
+
+    useEffect(() => {
+        const handleKeyDown = event => {
+            setPressedKeys(prevKeys => new Set(prevKeys).add(event.key));
+        };
+
+        const handleKeyUp = event => {
+            setPressedKeys(prevKeys => {
+                const updatedKeys = new Set(prevKeys);
+                updatedKeys.delete(event.key);
+                return updatedKeys;
+            });
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("keyup", handleKeyUp);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("keyup", handleKeyUp);
+        };
+    }, []);
+
+    return pressedKeys;
+};
+
 function drawElement(element, context, roughCanvas) {
     // console.log("drawElement",element);
     if (element.elementType === "line") {
         roughCanvas.draw(element.roughElement);
     } else if (element.elementType === "pencil") {
-        const stroke = getSvgPathFromStroke(getStroke(element.points, {size: 5, thinning: 0.5}));
+        const stroke = getSvgPathFromStroke(getStroke(element.points));
         context.fillStyle = element.color;
         context.fill(new Path2D(stroke));
 
@@ -315,17 +341,37 @@ function App() {
     const [boundingBox, setBoundingBox] = useState(null);
     const [selectedColor, setSelectedColor] = useState("blue"); // Step 1: Color state
     const [showColorPicker, setShowColorPicker] = useState(false); // Step 1: Color state
-    // const [panOffset, setPanOffset] = React.useState({x: 0, y: 0});
-    // const [startPanMousePosition, setStartPanMousePosition] = React.useState({x: 0, y: 0});
+    const [panOffset, setPanOffset] = useState({x: 0, y: 0});
+    const [startPanMousePosition, setStartPanMousePosition] = useState({x: 0, y: 0});
+    const pressedKeys = usePressedKeys();
     // const [selectedObjectIndex, setSelectedObjectIndex] = useState(null);
 
+    const getMouseCoordinates = event => {
+        const clientX = event.clientX - panOffset.x;
+        const clientY = event.clientY - panOffset.y;
+        return { clientX, clientY };
+    };
+
+    useEffect(() => {
+        const panFunction = event => {
+            setPanOffset(prevState => ({
+                x: prevState.x - event.deltaX,
+                y: prevState.y - event.deltaY,
+            }));
+        };
+
+        document.addEventListener("wheel", panFunction);
+        return () => {
+            document.removeEventListener("wheel", panFunction);
+        };
+    }, []);
 
     useLayoutEffect(() => {
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
         context.clearRect(0, 0, window.innerWidth, window.innerHeight);
         context.save();
-
+        context.translate(panOffset.x, panOffset.y);
 
         let roughCanvas = rough.canvas(canvas);
         elements.forEach(element => drawElement(element, context, roughCanvas));
@@ -341,8 +387,37 @@ function App() {
             });
             roughCanvas.draw(roughBoundingBox);
         }
-    }, [elements, setCopiedElement, boundingBox]);
 
+        // Add touch event listeners
+        canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchmove', handleTouchMove);
+        canvas.addEventListener('touchend', handleTouchEnd);
+
+        return () => {
+            // Remove touch event listeners when the component unmounts
+            canvas.removeEventListener('touchstart', handleTouchStart);
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvas.removeEventListener('touchend', handleTouchEnd);
+        };
+
+    }, [elements, setCopiedElement, boundingBox,panOffset]);
+
+    const handleTouchStart = (event) => {
+        event.preventDefault(); // Prevent the default touch behavior
+        const touch = event.touches[0]; // Get the first touch point
+        handleMouseDown(touch);
+    };
+
+    const handleTouchMove = (event) => {
+        event.preventDefault();
+        const touch = event.touches[0];
+        handleMouseMove(touch);
+    };
+
+    const handleTouchEnd = (event) => {
+        event.preventDefault();
+        handleMouseUp();
+    };
     // Cleanup context menu when clicking outside
     useEffect(() => {
         // const panFunction = event => {
@@ -379,18 +454,6 @@ function App() {
             document.removeEventListener('keydown', handleKeyPress);
         };
 
-        // const handleClickOutside = (event) => {
-        //     const contextMenu = document.querySelector(".context-menu");
-        //     if (contextMenu && !contextMenu.contains(event.target)) {
-        //         contextMenu.remove();
-        //     }
-        // };
-        //
-        // const cleanup = () => {
-        //     document.removeEventListener("mousedown", handleClickOutside);
-        // };
-        //
-        // document.addEventListener("mousedown", handleClickOutside);
 
 
     }, [undo,redo]);
@@ -417,7 +480,13 @@ function App() {
         setElements(elementsCopy, true);
     }
     const handleMouseDown = (event) => {
-        const {clientX, clientY} = event;
+        const { clientX, clientY } = getMouseCoordinates(event);
+
+        if (event.button === 1 || pressedKeys.has(" ")) {
+            setAction("panning");
+            setStartPanMousePosition({ x: clientX, y: clientY });
+            return;
+        }
 
         if (tool === "selection") {
 
@@ -515,6 +584,7 @@ function App() {
     }
 
     const handleMouseUp = () => {
+        // const { clientX, clientY } = getMouseCoordinates(event);
         if (!action) return;
         setBoundingBox(null);
         setShowColorPicker(false)
@@ -541,17 +611,17 @@ function App() {
 
     const handleMouseMove = (event) => {
 
-        const {clientX, clientY} = event;
+        const { clientX, clientY } = getMouseCoordinates(event);
         // MOUSE PANNING LOGIC
-        // if (action === "panning") {
-        //     const deltaX = clientX - startPanMousePosition.x;
-        //     const deltaY = clientY - startPanMousePosition.y;
-        //     setPanOffset({
-        //         x: panOffset.x + deltaX,
-        //         y: panOffset.y + deltaY,
-        //     });
-        //     return;
-        // }
+        if (action === "panning") {
+            const deltaX = clientX - startPanMousePosition.x;
+            const deltaY = clientY - startPanMousePosition.y;
+            setPanOffset({
+                x: panOffset.x + deltaX,
+                y: panOffset.y + deltaY,
+            });
+            return;
+        }
 
         if (tool === "selection") {
             const element = getElementAtPosition(clientX, clientY, elements);
