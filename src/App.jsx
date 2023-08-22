@@ -5,16 +5,19 @@ import {Tooltip} from 'antd';
 import "./App.css";
 import rough from 'roughjs/bundled/rough.esm';
 import {getStroke} from "perfect-freehand";
-import {ReactComponent as LineIcon} from "./assets/line.svg";
-import {ReactComponent as RectangleIcon} from "./assets/rectangle.svg";
-import {ReactComponent as CircleIcon} from "./assets/circle.svg";
-import {ReactComponent as SelectionIcon} from "./assets/selection.svg";
-import {ReactComponent as EllipseIcon} from "./assets/ellipse.svg";
-import {ReactComponent as SquareIcon} from "./assets/square.svg";
-import {ReactComponent as UndoIcon} from "./assets/undo.svg";
-import {ReactComponent as RedoIcon} from "./assets/redo.svg";
-import {ReactComponent as PencilIcon} from './assets/pencil.svg';
-import {ReactComponent as PentagonIcon} from './assets/pentagon.svg';
+import {
+    LineIcon,
+    RectangleIcon,
+    CircleIcon,
+    SelectionIcon,
+    EllipseIcon,
+    SquareIcon,
+    UndoIcon,
+    RedoIcon,
+    PencilIcon,
+    PentagonIcon
+} from './assets/Icons';
+import ToolButton from "./components/ToolButton.jsx";
 
 const generator = rough.generator();
 
@@ -37,7 +40,7 @@ const adjustElementCoordinates = element => {
 
 function createElement(id, x1, y1, x2, y2, elementType, color) {
     let roughElement;
-    console.log("Element Type Created", elementType)
+    // console.log("Element Type Created", elementType)
 
     if (elementType === "line") {
         roughElement = generator.line(x1, y1, x2, y2, {stroke: color});
@@ -126,27 +129,27 @@ function isPointInsidePolygon(point, polygon) {
 const positionWithinElement = (x, y, element) => {
     const {elementType, x1, x2, y1, y2} = element;
 
+    //For for checking the mouse on the element of Square and Rectangle
+    const topLeft = nearPoint(x, y, x1, y1, "tl");
+    const topRight = nearPoint(x, y, x2, y1, "tr");
+    const bottomLeft = nearPoint(x, y, x1, y2, "bl");
+    const bottomRight = nearPoint(x, y, x2, y2, "br");
+    const inside = x >= x1 && x <= x2 && y >= y1 && y <= y2 ? "inside" : null;
+
     switch (elementType) {
-        case "line":
+        case "line": {
             const on = onLine(x1, y1, x2, y2, x, y);
             const start = nearPoint(x, y, x1, y1, "start");
             const end = nearPoint(x, y, x2, y2, "end");
             return start || end || on;
-        case "rectangle":
-            const topLeft = nearPoint(x, y, x1, y1, "tl");
-            const topRight = nearPoint(x, y, x2, y1, "tr");
-            const bottomLeft = nearPoint(x, y, x1, y2, "bl");
-            const bottomRight = nearPoint(x, y, x2, y2, "br");
-            const inside = x >= x1 && x <= x2 && y >= y1 && y <= y2 ? "inside" : null;
+        }
+
+        case "rectangle": {
             return topLeft || topRight || bottomLeft || bottomRight || inside;
-        case "square":
-            const topLeftSquare = nearPoint(x, y, x1, y1, "tl");
-            const topRightSquare = nearPoint(x, y, x2, y1, "tr");
-            const bottomLeftSquare = nearPoint(x, y, x1, y2, "bl");
-            const bottomRightSquare = nearPoint(x, y, x2, y2, "br");
-            const insideSquare = x >= x1 && x <= x2 && y >= y1 && y <= y2 ? "inside" : null;
-            return topLeftSquare || topRightSquare || bottomLeftSquare || bottomRightSquare || insideSquare;
-        case "circle":
+        }
+        case "square": {
+            return topLeft || topRight || bottomLeft || bottomRight || inside;}
+        case "circle": {
             const centerX = (x1 + x2) / 2;
             const centerY = (y1 + y2) / 2;
             const distanceToCenter = distance({x, y}, {x: centerX, y: centerY});
@@ -158,8 +161,8 @@ const positionWithinElement = (x, y, element) => {
             }
             break;
 
-
-        case "ellipse":
+        }
+        case "ellipse": {
             const ellipseCenterX = (x1 + x2) / 2;
             const ellipseCenterY = (y1 + y2) / 2;
             const rx = Math.abs(x2 - x1) / 2;
@@ -172,7 +175,9 @@ const positionWithinElement = (x, y, element) => {
                 return "inside";
             }
             break;
-        case "pentagon":
+        }
+        case "pentagon": {
+
             const sideLength = Math.min(Math.abs(element.x2 - element.x1), Math.abs(element.y2 - element.y1));
             const centerXPentagon = (element.x1 + element.x2) / 2;
             const centerYPentagon = (element.y1 + element.y2) / 2;
@@ -192,16 +197,18 @@ const positionWithinElement = (x, y, element) => {
             }
             break;
 
-
-        case "pencil":
+        }
+        case "pencil": {
             const betweenAnyPoint = element.points.some((point, index) => {
                 const nextPoint = element.points[index + 1];
                 if (!nextPoint) return false;
                 return onLine(point.x, point.y, nextPoint.x, nextPoint.y, x, y, 5) != null;
             });
             return betweenAnyPoint ? "inside" : null;
-        case "text":
+        }
+        case "text": {
             return x >= x1 && x <= x2 && y >= y1 && y <= y2 ? "inside" : null;
+        }
         default:
             throw new Error(`Type not recognised: ${elementType}`);
     }
@@ -285,7 +292,7 @@ const useHistory = (initialState) => {
             setHistory(historyCopy);
         } else {
             const updatedState = [...history].slice(0, index + 1);
-            setHistory(prevState => [...updatedState, newState])
+            setHistory( [...updatedState, newState])
             setIndex(prevState => prevState + 1)
         }
 
@@ -372,19 +379,22 @@ function App() {
             document.removeEventListener('keydown', handleKeyPress);
         };
 
-        const handleClickOutside = (event) => {
-            const contextMenu = document.querySelector(".context-menu");
-            if (contextMenu && !contextMenu.contains(event.target)) {
-                contextMenu.remove();
-            }
-        };
+        // const handleClickOutside = (event) => {
+        //     const contextMenu = document.querySelector(".context-menu");
+        //     if (contextMenu && !contextMenu.contains(event.target)) {
+        //         contextMenu.remove();
+        //     }
+        // };
+        //
+        // const cleanup = () => {
+        //     document.removeEventListener("mousedown", handleClickOutside);
+        // };
+        //
+        // document.addEventListener("mousedown", handleClickOutside);
 
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-    const updateElement = (id, x1, y1, x2, y2, elementType, color) => {
+
+    }, [undo,redo]);
+    const updateElement = (id, x1, y1, x2, y2, elementType) => {
         const elementsCopy = [...elements];
         switch (elementType) {
             case "pencil":
@@ -504,7 +514,7 @@ function App() {
         }
     }
 
-    const handleMouseUp = (event) => {
+    const handleMouseUp = () => {
         if (!action) return;
         setBoundingBox(null);
         setShowColorPicker(false)
@@ -595,7 +605,7 @@ function App() {
                     height: y2 - y1
                 });
                 setCopiedElement(selectedElement);
-            }else {
+            } else {
 
                 const {id, x1, y1, x2, y2, elementType, offsetX, offsetY, color} = selectedElement;
                 const width = x2 - x1;
@@ -695,28 +705,7 @@ function App() {
 
     }
 
-    const ToolButton = ({name, icon, onClick, tooltip}) => (
-        <div style={{position: "relative"}}>
-            <Tooltip title={tooltip}>
-                <button
-                    style={{
-                        width: 45,
-                        height: 45,
-                        border: "none",
-                        borderRadius: 10,
-                        margin: 10,
-                        backgroundColor: tool === name ? "lightblue" : "white",
-                        boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
-                    }}
-                    onClick={onClick}
-                >
-                    {icon}
-                </button>
-            </Tooltip>
-        </div>
-    );
 
-    console.log("selectedColor", selectedColor.hex)
 
     return (
         <div>
@@ -727,48 +716,56 @@ function App() {
                         icon={<SelectionIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("selection")}
                         tooltip="Select Tool"
+                        tool={tool}
                     />
                     <ToolButton
                         name="pencil"
                         icon={<PencilIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("pencil")}
                         tooltip="Pencil Tool"
+                        tool={tool}
                     />
                     <ToolButton
                         name="line"
                         icon={<LineIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("line")}
                         tooltip="Line Tool"
+                        tool={tool}
                     />
                     <ToolButton
                         name="rectangle"
                         icon={<RectangleIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("rectangle")}
                         tooltip="Rectangle Tool"
+                        tool={tool}
                     />
                     <ToolButton
                         name="circle"
                         icon={<CircleIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("circle")}
                         tooltip="Circle Tool"
+                          tool={tool}
                     />
                     <ToolButton
                         name="ellipse"
                         icon={<EllipseIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("ellipse")}
                         tooltip="Ellipse Tool"
+                          tool={tool}
                     />
                     <ToolButton
                         name="square"
                         icon={<SquareIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("square")}
                         tooltip="Square Tool"
+                         tool={tool}
                     />
                     <ToolButton
                         name="pentagon"
                         icon={<PentagonIcon width={25} height={25} strokeWidth={2}/>}
                         onClick={() => setTool("pentagon")}
                         tooltip="Pentagon Tool"
+                         tool={tool}
                     />
                     <ToolButton
                         name="undo"
@@ -779,6 +776,7 @@ function App() {
 
                         }}
                         tooltip="Undo"
+                         tool={tool}
                     />
                     <ToolButton
                         name="redo"
@@ -788,6 +786,7 @@ function App() {
                             redo();
                         }}
                         tooltip="Redo"
+                          tool={tool}
                     />
                     <Tooltip title={"Select Color"}>
                         <button

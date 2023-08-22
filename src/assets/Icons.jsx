@@ -1,0 +1,21 @@
+import {ReactComponent as Line} from "./line.svg";
+import {ReactComponent as Rectangle} from "./rectangle.svg";
+import {ReactComponent as Circle} from "./circle.svg";
+import {ReactComponent as Selection} from "./selection.svg";
+import {ReactComponent as Ellipse} from "./ellipse.svg";
+import {ReactComponent as Square} from "./square.svg";
+import {ReactComponent as Pencil} from './pencil.svg';
+import {ReactComponent as Pentagon} from './pentagon.svg';
+
+import {ReactComponent as Undo} from "./undo.svg";
+import {ReactComponent as Redo} from "./redo.svg";
+export const LineIcon = Line;
+export const RectangleIcon = Rectangle;
+export const CircleIcon = Circle;
+export const SelectionIcon = Selection;
+export const EllipseIcon = Ellipse;
+export const SquareIcon = Square;
+export const UndoIcon = Undo;
+export const RedoIcon = Redo;
+export const PencilIcon = Pencil;
+export const PentagonIcon = Pentagon;
